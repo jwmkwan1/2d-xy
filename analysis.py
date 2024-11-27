@@ -2,26 +2,7 @@ import numpy as np
 import sys
 from tqdm import trange # type: ignore
 
-# To compute stiffness, need winding numbers
-def winding_x(flows, L):
-    """
-    Calculates the winding in the x-direction
-    for a closed flow configuration.
-    """
-    total_winding = 0
-    for i in range(L):
-        total_winding += flows[0,i,0]
-    return total_winding
-
-def winding_y(flows, L):
-    """
-    Calculates the winding in the y-direction
-    for a closed flow configuration.
-    """
-    total_winding = 0
-    for i in range(L):
-        total_winding += flows[i,0,1]
-    return total_winding
+from worm import winding_x, winding_y
 
 def analyze(flows, sources, sinks, K, L):
     """
@@ -32,8 +13,8 @@ def analyze(flows, sources, sinks, K, L):
     z_space = 0
     w_squared = 0
 
-    # First 20% of samples are thermalization
-    for i in trange(num_samples // 5, num_samples):
+    # First 25% of samples are thermalization
+    for i in trange(num_samples // 4, num_samples):
         if np.all(sources[i] == sinks[i]):
             z_space += 1
             wx = winding_x(flows[i], L)
@@ -52,10 +33,6 @@ def do_analysis(K, L, num_samples):
     """
     Perform data analysis on a specific run
     """
-    K = float(sys.argv[1])
-    L = int(sys.argv[2])
-    num_samples = int(sys.argv[3])
-
     filename = f"data/samples_{K}_{L}_{num_samples}.npy"
 
     with open(filename, 'rb') as f:
@@ -76,23 +53,27 @@ def do_analysis(K, L, num_samples):
 
 if __name__ == '__main__':
     """
-    Usage: python analysis.py [K] [L] [num_samples]
+    Usage: python analysis.py [K_min] [K_max] [num_K] [L] [num_samples]
     """
-    K = float(sys.argv[1])
-    L = int(sys.argv[2])
-    num_samples = int(sys.argv[3])
+    K_min = float(sys.argv[1])
+    K_max = float(sys.argv[2])
+    num_K = int(sys.argv[3])
+    L = int(sys.argv[4])
+    num_samples = int(sys.argv[5])
 
-    filename = f"data/samples_{K}_{L}_{num_samples}.npy"
+    results = np.zeros((3, num_K))
+    K_list = np.linspace(K_min, K_max, num_K, endpoint=False)
 
-    with open(filename, 'rb') as f:
-        flows = np.load(f)
-        sources = np.load(f)
-        sinks = np.load(f)
+    for i in range(num_K):
+        K_sample = np.round(K_list[i], 3)
+        rho_s, chi = do_analysis(K_sample, L, num_samples)
 
-    print("Starting analysis:")
-    rho_s, chi = analyze(flows, sources, sinks, K, L)
+        # Store results
+        results[0, i] = K_sample
+        results[1, i] = rho_s
+        results[2, i] = chi
 
-    print("Finished")
+    filename = f"data/results_{L}_{num_samples}.npy"
 
-    print("Results: (K, L, rho_s, chi)")
-    print(f"{K}, {L}, {rho_s}, {chi}")
+    with open(filename, 'wb') as f:
+        np.save(f, results)
