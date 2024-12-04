@@ -4,7 +4,6 @@ import time
 import numba # type: ignore
 from scipy.special import iv # type: ignore
 
-from analysis import analyze
 from worm import gen_samples_measure
 
 @numba.njit(parallel=True)
@@ -27,17 +26,6 @@ def get_results(K_list, L, num_samples, bessels):
         results[2, i] = chi
 
     return results
-
-def test_samples():
-    """
-    Script to test how many data points before results converge.
-    """
-    L = 16
-    K = 1.11
-    samples = [3000000, 10000000, 30000000]
-
-    for num_samples in samples:
-        rho_s, chi = gen_samples_measure(K, L, num_samples)
 
 if __name__ == '__main__':
     L = int(sys.argv[1])
